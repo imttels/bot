@@ -1,0 +1,12 @@
+python-telegram-bot==22.6
+google-auth-oauthlib==1.2.1
+google-auth-httplib2==0.2.0
+google-api-python-client==2.136.0
+python-dotenv==1.0.1
+
+
+
+print("BOT_TOKEN     :", repr(os.getenv("BOT_TOKEN")))
+print("PARENT_FOLDER_ID:", repr(os.getenv("PARENT_FOLDER_ID")))
+print("ADMIN_IDS     :", repr(os.getenv("ADMIN_IDS")))
+print("GOOGLE_CREDENTIALS:", repr(os.getenv("GOOGLE_CREDENTIALS")))
