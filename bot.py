@@ -425,6 +425,43 @@
 
 
 
+
+
+
+
+# # from telegram.ext import (
+# #     ApplicationBuilder,
+# #     CommandHandler,
+# #     MessageHandler,
+# #     CallbackQueryHandler,
+# #     filters
+# # )
+
+# # from config import TOKEN
+
+# # from handlers.user_handlers import reg
+# # from handlers.admin_handlers import start
+# # from handlers.button_handlers import button_handler
+
+
+# # def main():
+
+# #     app = ApplicationBuilder().token(TOKEN).build()
+
+# #     app.add_handler(CommandHandler("start", start))
+# #     app.add_handler(CommandHandler("reg", reg))
+
+# #     app.add_handler(CallbackQueryHandler(button_handler))
+
+# #     app.run_polling()
+
+
+# # if __name__ == "__main__":
+# #     main()
+
+
+
+
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -434,23 +471,28 @@ from telegram.ext import (
 )
 
 from config import TOKEN
-
-from handlers.user_handlers import reg
+import db
+from handlers.user_handlers import reg, send_user, send_month, list_employees, unreg
 from handlers.admin_handlers import start
 from handlers.button_handlers import button_handler
-
+from handlers.reply_handlers import reply_button_handler
 
 def main():
+    db.init_db()
 
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("reg", reg))
+    app.add_handler(CommandHandler("send_user", send_user))
+    app.add_handler(CommandHandler("send_month", send_month))
+    app.add_handler(CommandHandler("list", list_employees))
+    app.add_handler(CommandHandler("unreg", unreg))
 
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_button_handler))
     app.add_handler(CallbackQueryHandler(button_handler))
 
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
