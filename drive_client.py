@@ -98,3 +98,30 @@ def list_pdfs_in_folder(service, folder_id):
     ).execute()
 
     return results.get("files", [])
+
+
+def get_years(service, parent_folder_id):
+
+    query = f"'{parent_folder_id}' in parents and mimeType='application/vnd.google-apps.folder'"
+
+    results = service.files().list(
+        q=query,
+        fields="files(name)"
+    ).execute()
+
+    folders = results.get("files", [])
+
+    years = set()
+
+    for folder in folders:
+
+        name = folder["name"]
+
+        if name.startswith("расчетки-"):
+
+            parts = name.split("-")
+
+            if len(parts) >= 2:
+                years.add(parts[1])
+
+    return sorted(list(years))
