@@ -4,12 +4,11 @@ from config import FOLDER_ID, ADMIN_CHAT_IDS
 from drive_client import get_drive_service, get_years, find_month_folder, list_pdfs_in_folder
 import db
 import logging
-from handlers.user_handlers import send_month_for_date  # если она в user_handlers
+from handlers.user_handlers import send_month_for_date 
 
 logger = logging.getLogger(__name__)
 
 def get_months(service, parent_folder_id, year):
-    """Возвращает список месяцев для указанного года на основе папок расчетки-ГГГГ-ММ."""
     query = f"'{parent_folder_id}' in parents and mimeType='application/vnd.google-apps.folder'"
     results = service.files().list(q=query, fields="files(name)").execute()
     folders = results.get("files", [])

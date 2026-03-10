@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE, month: str, target_message):
-    """Отправляет расчетки всем сотрудникам за месяц, результат пишет в target_message."""
     sender_id = update.effective_chat.id
     if sender_id not in ADMIN_CHAT_IDS:
         await target_message.reply_text("Доступ запрещён. Только администратор.")
@@ -179,7 +178,6 @@ async def send_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             os.remove(original_filename)
 
 async def send_month(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик команды /send_month YYYY-MM"""
     if not context.args:
         await update.message.reply_text("Укажи месяц: /send_month 2026-01")
         return
