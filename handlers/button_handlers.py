@@ -60,5 +60,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"Выберите месяц {year}", reply_markup=month_keyboard(year, months))
     elif data.startswith("month_"):
         month = data.split("_")[1]
-        await query.edit_message_text(f"Отправляю расчетки за {month}...")
-        await send_month_for_date(update, context, month, query.message)
+        context.user_data['selected_month'] = month
+        keyboard = [
+            [InlineKeyboardButton("✅ Использовать стандартный текст", callback_data="use_default")],
+            [InlineKeyboardButton("✏️ Ввести свой текст", callback_data="enter_custom")]
+        ]
+        await query.edit_message_text(
+            f"Выбран месяц {month}. Выберите действие:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    elif data == "use_default":
+        month = context.user_data.get('selected_month')
+        if not month:
+            await query.edit_message_text("Ошибка: месяц не выбран. Начните заново.")
+            return
+        await query.edit_message_text(f"Отправляю расчётки за {month} со стандартным текстом...")
+        await send_month_for_date(update, context, month, query.message, custom_caption=None)
+        context.user_data.pop('selected_month', None)
+
+    elif data == "enter_custom":
+        await query.edit_message_text("Введите текст сообщения (отправьте одним сообщением):")
+        context.user_data['awaiting_custom_text'] = True

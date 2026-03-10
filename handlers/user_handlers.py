@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 logger = logging.getLogger(__name__)
 
 
-async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE, month: str, target_message):
+async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE, month: str, target_message, custom_caption=None):
     sender_id = update.effective_chat.id
     if sender_id not in ADMIN_CHAT_IDS:
         await target_message.reply_text("Доступ запрещён. Только администратор.")
@@ -31,6 +31,12 @@ async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     all_employees = db.get_all_employees()
     registered_names = {name for _, name in all_employees}
+
+    default_caption = db.get_setting("default_caption", "Расчётка за {month}")
+    if custom_caption is not None:
+        caption_text = custom_caption
+    else:
+        caption_text = default_caption.replace("{month}", month)
 
     files = list_pdfs_in_folder(service, month_folder_id)
 
@@ -59,7 +65,7 @@ async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE
                     chat_id=chat_id,
                     document=f,
                     filename=original_filename,
-                    caption=f"Расчётка за {month}"
+                    caption=caption_text
                 )
             success.append(name)
             logger.info(f"Отправлено: {name} за {month}")

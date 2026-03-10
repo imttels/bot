@@ -13,6 +13,8 @@ def init_db():
     )
     """)
 
+    cursor.execute('''CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)''')
+
     conn.commit()
     conn.close()
 
@@ -92,3 +94,19 @@ def remove_employee(name: str, admin_chat_ids: list[int] | None = None) -> bool:
     conn.commit()
     conn.close()
     return deleted
+
+
+def get_setting(key, default=None):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT value FROM settings WHERE key=?", (key,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else default
+
+def set_setting(key, value):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
+    conn.close()
