@@ -47,7 +47,6 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             else:
                 failed.append(f"{name} (chat_id не найден)")
 
-        # Отчёт администратору
         report = f"✅ Отправлено {len(success)}:\n" + "\n".join(success) if success else ""
         if failed:
             report += f"\n❌ Не удалось отправить {len(failed)}:\n" + "\n".join(failed)

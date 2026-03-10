@@ -84,7 +84,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Введите текст сообщения (отправьте одним сообщением):")
         context.user_data['awaiting_custom_text'] = True
 
-        
+
 
     if data.startswith("toggle_"):
         name = data[7:]  # убираем "toggle_"
@@ -120,7 +120,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def build_employees_keyboard(employees_dict, selected_set, page=0, items_per_page=5):
-    """Строит inline-клавиатуру для выбора сотрудников с чекбоксами."""
     names = sorted(employees_dict.keys())
     total_pages = math.ceil(len(names) / items_per_page)
     start = page * items_per_page
@@ -132,7 +131,6 @@ def build_employees_keyboard(employees_dict, selected_set, page=0, items_per_pag
         status = "✅" if name in selected_set else "⬜"
         keyboard.append([InlineKeyboardButton(f"{status} {name}", callback_data=f"toggle_{name}")])
 
-    # Кнопки навигации
     nav_buttons = []
     if page > 0:
         nav_buttons.append(InlineKeyboardButton("⬅️ Назад", callback_data=f"page_{page-1}"))
@@ -141,7 +139,6 @@ def build_employees_keyboard(employees_dict, selected_set, page=0, items_per_pag
     if nav_buttons:
         keyboard.append(nav_buttons)
 
-    # Кнопки действий
     keyboard.append([
         InlineKeyboardButton("✅ Готово", callback_data="broadcast_done"),
         InlineKeyboardButton("❌ Отмена", callback_data="broadcast_cancel")
@@ -150,7 +147,6 @@ def build_employees_keyboard(employees_dict, selected_set, page=0, items_per_pag
     return InlineKeyboardMarkup(keyboard)
 
 async def show_employees_page(update: Update, context: ContextTypes.DEFAULT_TYPE, page=0):
-    """Отображает страницу со списком сотрудников."""
     employees = context.user_data['broadcast_employees']
     selected = context.user_data['selected_employees']
     keyboard = build_employees_keyboard(employees, selected, page)

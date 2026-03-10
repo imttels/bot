@@ -44,7 +44,6 @@ async def set_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"✅ Текст по умолчанию установлен:\n{caption}")
 
 async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Начинает процесс массовой рассылки: показывает список сотрудников для выбора."""
     if update.effective_chat.id not in ADMIN_CHAT_IDS:
         await update.message.reply_text("Доступ запрещён.")
         return
@@ -54,9 +53,7 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Нет зарегистрированных сотрудников.")
         return
 
-    # Сохраняем список сотрудников в user_data для дальнейшего использования
     context.user_data['broadcast_employees'] = {name: chat_id for chat_id, name in employees}
     context.user_data['selected_employees'] = set()
 
-    # Показываем первую страницу
     await show_employees_page(update, context, page=0)
