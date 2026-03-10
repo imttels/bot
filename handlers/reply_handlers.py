@@ -6,6 +6,8 @@ from handlers.admin_handlers import get_admin_keyboard
 from handlers.button_handlers import year_keyboard
 from handlers.user_handlers import list_employees
 from handlers.user_handlers import send_month_for_date 
+from handlers.admin_handlers import broadcast_start
+
 
 
 async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -21,6 +23,36 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await send_month_for_date(update, context, month, update.message, custom_caption=custom_text)
         context.user_data.pop('awaiting_custom_text', None)
         context.user_data.pop('selected_month', None)
+        return
+    
+    if context.user_data.get('awaiting_broadcast_text'):
+        text = update.message.text
+        if text == '/cancel':
+            await update.message.reply_text("❌ Рассылка отменена.")
+            context.user_data.clear()
+            return
+
+        selected_names = context.user_data.get('selected_employees', set())
+        employees = context.user_data.get('broadcast_employees', {})
+        success = []
+        failed = []
+        for name in selected_names:
+            chat_id = employees.get(name)
+            if chat_id:
+                try:
+                    await context.bot.send_message(chat_id=chat_id, text=text)
+                    success.append(name)
+                except Exception as e:
+                    failed.append(f"{name} (ошибка: {e})")
+            else:
+                failed.append(f"{name} (chat_id не найден)")
+
+        # Отчёт администратору
+        report = f"✅ Отправлено {len(success)}:\n" + "\n".join(success) if success else ""
+        if failed:
+            report += f"\n❌ Не удалось отправить {len(failed)}:\n" + "\n".join(failed)
+        await update.message.reply_text(report or "Никому не отправлено.")
+        context.user_data.clear()
         return
 
     chat_id = update.effective_chat.id
@@ -42,6 +74,8 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("Используйте команду /send_user Имя Фамилия YYYY-MM\nНапример: /send_user Иван Петров 2026-01")
     elif text == "📋 Список сотрудников":
         await list_employees(update, context)
+    elif text == "📨 Отправить сообщение выбранным":
+        await broadcast_start(update, context)
     elif text == "❓ Помощь":
         help_text = (
             "Команды администратора:\n"
