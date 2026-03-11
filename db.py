@@ -9,7 +9,8 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS employees (
         chat_id INTEGER PRIMARY KEY,
-        name TEXT UNIQUE NOT NULL
+        name TEXT UNIQUE NOT NULL,
+        city TEXT
     )
     """)
 
@@ -110,3 +111,30 @@ def set_setting(key, value):
     c.execute("REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
     conn.commit()
     conn.close()
+
+
+
+
+
+def update_employee_city(name, city):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE employees SET city=? WHERE name=?", (city, name))
+    conn.commit()
+    conn.close()
+
+def get_employees_by_city(city):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT chat_id, name FROM employees WHERE city=?", (city,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def get_all_employees_with_city():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT chat_id, name, city FROM employees")
+    rows = c.fetchall()
+    conn.close()
+    return rows  

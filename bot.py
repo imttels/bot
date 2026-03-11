@@ -17,6 +17,7 @@ from handlers.reply_handlers import reply_button_handler
 from handlers.birthday_notification import send_today_birthdays, send_tomorrow_birthdays
 from handlers.admin_handlers import set_caption
 from handlers.admin_handlers import broadcast_start
+from handlers.admin_handlers import update_cities
 
 
 async def start_scheduler(app):
@@ -51,6 +52,8 @@ def main():
     app.add_handler(CommandHandler("unreg", unreg))
     app.add_handler(CommandHandler("set_caption", set_caption))
     app.add_handler(CommandHandler("broadcast", broadcast_start))
+    app.add_handler(CommandHandler("update_cities", update_cities))
+
 
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_button_handler))

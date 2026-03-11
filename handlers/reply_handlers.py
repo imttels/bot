@@ -7,10 +7,34 @@ from handlers.button_handlers import year_keyboard
 from handlers.user_handlers import list_employees
 from handlers.user_handlers import send_month_for_date 
 from handlers.admin_handlers import broadcast_start
+import db
 
 
 
 async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get('awaiting_moscow_text'):
+        text = update.message.text
+        if text == '/cancel':
+            await update.message.reply_text("❌ Рассылка отменена.")
+            context.user_data.clear()
+            return
+
+        recipients = context.user_data.get('moscow_recipients', {})
+        success = []
+        failed = []
+        for name, chat_id in recipients.items():
+            try:
+                await context.bot.send_message(chat_id=chat_id, text=text)
+                success.append(name)
+            except Exception as e:
+                failed.append(f"{name} (ошибка: {e})")
+
+        report = f"✅ Отправлено {len(success)}:\n" + "\n".join(success) if success else ""
+        if failed:
+            report += f"\n❌ Не удалось отправить {len(failed)}:\n" + "\n".join(failed)
+        await update.message.reply_text(report or "Никому не отправлено.")
+        context.user_data.clear()
+        return
 
     if context.user_data.get('awaiting_custom_text'):
         month = context.user_data.get('selected_month')
@@ -75,6 +99,8 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await list_employees(update, context)
     elif text == "📨 Отправить сообщение выбранным":
         await broadcast_start(update, context)
+    elif text == "📍 Отправить сообщение Москва":
+        await broadcast_to_moscow(update, context)
     elif text == "❓ Помощь":
         help_text = (
             "Команды администратора:\n"
@@ -87,3 +113,24 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
 
         )
         await update.message.reply_text(help_text)
+
+
+
+
+
+async def broadcast_to_moscow(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.id not in ADMIN_CHAT_IDS:
+        await update.message.reply_text("Доступ запрещён.")
+        return
+
+    moscow_employees = db.get_employees_by_city("Москва")
+    if not moscow_employees:
+        await update.message.reply_text("Нет сотрудников из Москвы.")
+        return
+
+    context.user_data['moscow_recipients'] = {name: chat_id for chat_id, name in moscow_employees}
+    context.user_data['awaiting_moscow_text'] = True
+    await update.message.reply_text(
+        f"Найдено сотрудников в Москве: {len(moscow_employees)}.\n"
+        "Введите текст сообщения для отправки (или /cancel для отмены)."
+    )
