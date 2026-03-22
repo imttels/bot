@@ -71,7 +71,7 @@ def read_curators(spreadsheet_id):
                 'phone': row[4].strip(),
                 'status': row[5].strip().lower()
             }
-            if curator['name'] and curator['status'] == 'работает':
+            if curator['name']:
                 curators.append(curator)
         return curators
 

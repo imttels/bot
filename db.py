@@ -12,7 +12,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS employees (
             chat_id INTEGER PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
-            city TEXT
+            city TEXT,
+            status TEXT DEFAULT 'работает'
         )
         """
     )
@@ -482,3 +483,58 @@ def delete_broadcast_for_admin(admin_chat_id: int, broadcast_id: int) -> bool:
     conn.commit()
     conn.close()
     return True
+
+
+def add_status_column_if_needed():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    try:
+        c.execute("ALTER TABLE employees ADD COLUMN status TEXT DEFAULT 'работает'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+    finally:
+        conn.close()
+
+
+def update_employee_status(name, status):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("UPDATE employees SET status=? WHERE name=?", (status, name))
+    conn.commit()
+    conn.close()
+
+
+def get_active_employees():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT chat_id, name FROM employees WHERE lower(coalesce(status, 'работает')) = 'работает'")
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def get_inactive_employees():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("""
+        SELECT chat_id, name
+        FROM employees
+        WHERE lower(trim(COALESCE(status, 'работает'))) != 'работает'
+    """)
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+
+def get_active_employees_by_city(city):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("""
+        SELECT chat_id, name
+        FROM employees
+        WHERE lower(trim(COALESCE(city, ''))) = lower(trim(?))
+          AND lower(trim(COALESCE(status, 'работает'))) = 'работает'
+    """, (city,))
+    rows = c.fetchall()
+    conn.close()
+    return rows

@@ -331,6 +331,68 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "broadcast_cancel":
         await query.edit_message_text("❌ Рассылка отменена.")
         context.user_data.clear()
+    
+    elif data == "broadcast_mode_active":
+        employees = db.get_active_employees()
+
+        if not employees:
+            await query.edit_message_text("Нет работающих сотрудников.")
+            return
+
+        context.user_data['broadcast_employees'] = {name: chat_id for chat_id, name in employees}
+        context.user_data['selected_employees'] = set()
+        context.user_data['current_page'] = 0
+        context.user_data['broadcast_filter_mode'] = 'active_only'
+
+        await show_employees_page(update, context, page=0)
+
+    elif data == "broadcast_mode_all":
+        employees = db.get_all_employees()
+
+        if not employees:
+            await query.edit_message_text("Нет зарегистрированных сотрудников.")
+            return
+
+        context.user_data['broadcast_employees'] = {name: chat_id for chat_id, name in employees}
+        context.user_data['selected_employees'] = set()
+        context.user_data['current_page'] = 0
+        context.user_data['broadcast_filter_mode'] = 'all'
+
+        await show_employees_page(update, context, page=0)
+
+    elif data == "moscow_mode_active":
+        employees = db.get_active_employees_by_city("Москва")
+
+        if not employees:
+            await query.edit_message_text("Нет работающих сотрудников из Москвы.")
+            return
+
+        context.user_data["moscow_recipients"] = {name: chat_id for chat_id, name in employees}
+        context.user_data["awaiting_moscow_text"] = True
+        context.user_data["moscow_filter_mode"] = "active_only"
+
+        await query.edit_message_text(
+            f"Выбрано получателей: {len(employees)}\n\n"
+            "Введите текст сообщения для отправки (или отправьте /cancel для отмены)."
+        )
+        return
+
+    elif data == "moscow_mode_all":
+        employees = db.get_employees_by_city("Москва")
+
+        if not employees:
+            await query.edit_message_text("Нет зарегистрированных сотрудников из Москвы.")
+            return
+
+        context.user_data["moscow_recipients"] = {name: chat_id for chat_id, name in employees}
+        context.user_data["awaiting_moscow_text"] = True
+        context.user_data["moscow_filter_mode"] = "all"
+
+        await query.edit_message_text(
+            f"Выбрано получателей: {len(employees)}\n\n"
+            "Введите текст сообщения для отправки (или отправьте /cancel для отмены)."
+        )
+        return
 
    
 

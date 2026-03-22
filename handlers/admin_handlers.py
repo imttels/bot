@@ -14,7 +14,7 @@ def get_admin_keyboard():
     keyboard = [
         ["📄 Отправить расчетки всем"],
         ["👤 Отправить расчетку сотруднику"],
-        ["📋 Список сотрудников"],
+        ["📋 Список зарегистрированных"],
         ["📨 Отправить сообщение выбранным"], 
         ["📍 Отправить сообщение Москва"],
         ["📥 Получить ответы"],
@@ -61,15 +61,40 @@ async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Доступ запрещён.")
         return
 
-    employees = db.get_all_employees()
-    if not employees:
-        await update.message.reply_text("Нет зарегистрированных сотрудников.")
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("Только работающим", callback_data="broadcast_mode_active"),
+            InlineKeyboardButton("Всем", callback_data="broadcast_mode_all"),
+        ],
+        [
+            InlineKeyboardButton("❌ Отмена", callback_data="broadcast_cancel")
+        ]
+    ])
+
+    await update.message.reply_text(
+        "Каким сотрудникам отправить сообщение?",
+        reply_markup=keyboard
+    )
+
+async def moscow_broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_chat.id not in ADMIN_CHAT_IDS:
+        await update.message.reply_text("Доступ запрещён.")
         return
 
-    context.user_data['broadcast_employees'] = {name: chat_id for chat_id, name in employees}
-    context.user_data['selected_employees'] = set()
+    keyboard = [
+        [
+            InlineKeyboardButton("Только работающим", callback_data="moscow_mode_active"),
+            InlineKeyboardButton("Всем", callback_data="moscow_mode_all"),
+        ],
+        [
+            InlineKeyboardButton("❌ Отмена", callback_data="broadcast_cancel"),
+        ]
+    ]
 
-    await show_employees_page(update, context, page=0)
+    await update.message.reply_text(
+        "Кому отправить сообщение по Москве?",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 
 
@@ -93,14 +118,17 @@ async def update_cities(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for curator in curators:
         name = curator['name']
         city = curator['city']
-        chat_id = db.get_employee_by_name(name)  
+        status = curator['status']
+
+        chat_id = db.get_employee_by_name(name)
         if chat_id:
             db.update_employee_city(name, city)
+            db.update_employee_status(name, status)
             updated += 1
         else:
             not_found.append(name)
 
-    report = f"✅ Обновлено городов: {updated}\n"
+    report = f"✅ Обновлено \n"
     if not_found:
         report += f"❌ Не найдены в базе: {', '.join(not_found[:10])}"
         if len(not_found) > 10:

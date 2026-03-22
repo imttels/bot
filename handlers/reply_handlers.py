@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 
 from config import ADMIN_CHAT_IDS, FOLDER_ID
 from drive_client import get_drive_service, get_years
-from handlers.admin_handlers import get_admin_keyboard, broadcast_start, send_pending_responses
+from handlers.admin_handlers import get_admin_keyboard, broadcast_start, send_pending_responses, moscow_broadcast_start
 from handlers.button_handlers import year_keyboard
 from handlers.user_handlers import list_employees, send_month_for_date
 import db
@@ -192,12 +192,12 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("Выберите год", reply_markup=year_keyboard(years))
     elif text == "👤 Отправить расчетку сотруднику":
         await update.message.reply_text("Используйте команду /send_user Имя Фамилия YYYY-MM\nНапример: /send_user Иван Петров 2026-01")
-    elif text == "📋 Список сотрудников":
+    elif text == "📋 Список зарегистрированных":
         await list_employees(update, context)
     elif text == "📨 Отправить сообщение выбранным":
         await broadcast_start(update, context)
     elif text == "📍 Отправить сообщение Москва":
-        await broadcast_to_moscow(update, context)
+        await moscow_broadcast_start(update, context)
 
     elif text == "📥 Получить ответы":
         await send_pending_responses(update, context)
@@ -216,22 +216,3 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(help_text)
 
 
-
-
-
-async def broadcast_to_moscow(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.id not in ADMIN_CHAT_IDS:
-        await update.message.reply_text("Доступ запрещён.")
-        return
-
-    moscow_employees = db.get_employees_by_city("Москва")
-    if not moscow_employees:
-        await update.message.reply_text("Нет сотрудников из Москвы.")
-        return
-
-    context.user_data['moscow_recipients'] = {name: chat_id for chat_id, name in moscow_employees}
-    context.user_data['awaiting_moscow_text'] = True
-    await update.message.reply_text(
-        f"Найдено сотрудников в Москве: {len(moscow_employees)}.\n"
-        "Введите текст сообщения для отправки (или /cancel для отмены)."
-    )

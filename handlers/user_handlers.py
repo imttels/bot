@@ -29,8 +29,12 @@ async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE
         await target_message.reply_text(f"Папка 'расчетки-{month}' не найдена.")
         return
 
-    all_employees = db.get_all_employees()
-    registered_names = {name for _, name in all_employees}
+    active_employees = db.get_active_employees()
+    inactive_employees = db.get_inactive_employees()
+
+    active_names = {name for _, name in active_employees}
+    inactive_names = {name for _, name in inactive_employees}
+    all_registered_names = active_names | inactive_names
 
     default_caption = db.get_setting("default_caption", "Расчётка за {month}")
     if custom_caption is not None:
@@ -43,17 +47,19 @@ async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE
     success = []
     failed_no_file = []
     failed_send_error = []
+    inactive_skipped = sorted(inactive_names)
     unregistered = []
 
-    for chat_id, name in all_employees:
+    for chat_id, name in active_employees:
         file = find_file_by_name(service, month_folder_id, name)
 
         if not file:
             failed_no_file.append(name)
-            logger.warning(f"Файл не найден для зарегистрированного: {name}")
+            logger.warning(f"Файл не найден для активного сотрудника: {name}")
             continue
 
         original_filename = file["name"]
+
         try:
             with ThreadPoolExecutor() as executor:
                 await asyncio.get_event_loop().run_in_executor(
@@ -67,11 +73,14 @@ async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE
                     filename=original_filename,
                     caption=caption_text
                 )
+
             success.append(name)
             logger.info(f"Отправлено: {name} за {month}")
+
         except Exception as e:
             failed_send_error.append(f"{name} (ошибка: {str(e)})")
             logger.error(f"Ошибка отправки {name}: {str(e)}")
+
         finally:
             if os.path.exists(original_filename):
                 os.remove(original_filename)
@@ -86,38 +95,46 @@ async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE
             unregistered.append(f"Неверное имя файла: {file['name']}")
             continue
 
-        if name_from_file not in registered_names:
+        if name_from_file not in all_registered_names:
             unregistered.append(name_from_file)
             logger.warning(f"Незарегистрированный сотрудник в файле: {name_from_file}")
 
-    total_registered = len(all_employees)
+    total_active = len(active_employees)
+    total_inactive = len(inactive_employees)
+    total_registered = total_active + total_inactive
     total_files = len(files)
 
     report_lines = []
     report_lines.append(f"Месяц: {month}")
-    report_lines.append(f"Зарегистрировано в боте: {total_registered}")
+    report_lines.append(f"Всего зарегистрировано в боте: {total_registered}")
+    report_lines.append(f"Работают: {total_active}")
+    report_lines.append(f"Не работают: {total_inactive}")
     report_lines.append(f"Найдено PDF-файлов: {total_files}")
     report_lines.append("─" * 40)
 
     if success:
         report_lines.append(f"✅ Успешно отправлено ({len(success)}):")
-        report_lines.append(", ".join(success))
+        report_lines.append(", ".join(sorted(success)))
     else:
         report_lines.append("✅ Отправлено: —")
 
     if failed_no_file:
-        report_lines.append(f"⚠️ Зарегистрированы, но файла нет ({len(failed_no_file)}):")
-        report_lines.append(", ".join(failed_no_file))
+        report_lines.append(f"⚠️ Работают, но файла нет ({len(failed_no_file)}):")
+        report_lines.append(", ".join(sorted(failed_no_file)))
 
     if failed_send_error:
         report_lines.append(f"❌ Ошибка при отправке ({len(failed_send_error)}):")
         report_lines.append(", ".join(failed_send_error))
 
-    if unregistered:
-        report_lines.append(f"⚠️ Файлы есть, но не зарегистрированы ({len(unregistered)}):")
-        report_lines.append(", ".join(unregistered))
+    if inactive_skipped:
+        report_lines.append(f"⏸ Не отправлено, сотрудник не работает ({len(inactive_skipped)}):")
+        report_lines.append(", ".join(sorted(inactive_skipped)))
 
-    if not (success or failed_no_file or failed_send_error or unregistered):
+    if unregistered:
+        report_lines.append(f"⚠️ Файлы есть, но сотрудник не зарегистрирован в боте ({len(unregistered)}):")
+        report_lines.append(", ".join(sorted(set(unregistered))))
+
+    if not (success or failed_no_file or failed_send_error or inactive_skipped or unregistered):
         report_lines.append("Ничего не обработано (папка пуста или ошибка доступа)")
 
     report = "\n".join(report_lines)
