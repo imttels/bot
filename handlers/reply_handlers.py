@@ -153,7 +153,7 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             response_text=text,
         )
         await update.message.reply_text(
-            "✅ Ответ сохранён. Администратор получит его по кнопке «📥 Получить ответы»."
+            "✅ Ответ сохранён."
         )
         return
 

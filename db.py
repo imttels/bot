@@ -2,19 +2,29 @@ import sqlite3
 
 DB_NAME = "employees.db"
 
+
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS employees (
-        chat_id INTEGER PRIMARY KEY,
-        name TEXT UNIQUE NOT NULL,
-        city TEXT
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS employees (
+            chat_id INTEGER PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            city TEXT
+        )
+        """
     )
-    """)
 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)''')
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+        """
+    )
 
     cursor.execute(
         """
@@ -64,46 +74,47 @@ def add_employee(chat_id: int, name: str):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT chat_id FROM employees WHERE name = ?",
-        (name,)
-    )
+    cursor.execute("SELECT chat_id FROM employees WHERE name = ?", (name,))
     existing = cursor.fetchone()
-
     if existing and existing[0] != chat_id:
         conn.close()
         return False
 
     try:
-        cursor.execute("""
-        INSERT INTO employees (chat_id, name)
-        VALUES (?, ?)
-        ON CONFLICT(chat_id)
-        DO UPDATE SET name=excluded.name
-        """, (chat_id, name))
-
+        cursor.execute(
+            """
+            INSERT INTO employees (chat_id, name)
+            VALUES (?, ?)
+            ON CONFLICT(chat_id)
+            DO UPDATE SET name=excluded.name
+            """,
+            (chat_id, name),
+        )
         conn.commit()
         conn.close()
         return True
-
     except sqlite3.IntegrityError:
         conn.close()
         return False
 
+
 def get_employee_by_name(name: str):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT chat_id FROM employees WHERE name = ?
-    """, (name,))
-
+    cursor.execute("SELECT chat_id FROM employees WHERE name = ?", (name,))
     result = cursor.fetchone()
     conn.close()
+    return result[0] if result else None
 
-    if result:
-        return result[0]
-    return None
+
+def get_employee_name_by_chat_id(chat_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM employees WHERE chat_id = ?", (chat_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else None
+
 
 def get_all_employees() -> list[tuple[int, str]]:
     conn = sqlite3.connect(DB_NAME)
@@ -113,10 +124,10 @@ def get_all_employees() -> list[tuple[int, str]]:
     conn.close()
     return employees
 
+
 def remove_employee(name: str, admin_chat_ids: list[int] | None = None) -> bool:
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-
     cursor.execute("SELECT chat_id FROM employees WHERE name = ?", (name,))
     result = cursor.fetchone()
 
@@ -125,10 +136,9 @@ def remove_employee(name: str, admin_chat_ids: list[int] | None = None) -> bool:
         return False
 
     employee_chat_id = result[0]
-
     if admin_chat_ids and employee_chat_id in admin_chat_ids:
         conn.close()
-        return False 
+        return False
 
     cursor.execute("DELETE FROM employees WHERE name = ?", (name,))
     deleted = cursor.rowcount > 0
@@ -145,15 +155,13 @@ def get_setting(key, default=None):
     conn.close()
     return row[0] if row else default
 
+
 def set_setting(key, value):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
     conn.commit()
     conn.close()
-
-
-
 
 
 def update_employee_city(name, city):
@@ -163,6 +171,7 @@ def update_employee_city(name, city):
     conn.commit()
     conn.close()
 
+
 def get_employees_by_city(city):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
@@ -171,18 +180,17 @@ def get_employees_by_city(city):
     conn.close()
     return rows
 
+
 def get_all_employees_with_city():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT chat_id, name, city FROM employees")
     rows = c.fetchall()
     conn.close()
-    return rows  
+    return rows
 
 
-
-
-def create_broadcast(admin_chat_id, message_text):
+def create_broadcast(admin_chat_id: int, message_text: str) -> int:
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
@@ -196,10 +204,10 @@ def create_broadcast(admin_chat_id, message_text):
 
 
 def add_broadcast_recipient(
-    broadcast_id,
-    employee_chat_id,
-    employee_name,
-    sent_message_id,
+    broadcast_id: int,
+    employee_chat_id: int,
+    employee_name: str,
+    sent_message_id: int,
 ):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
@@ -219,7 +227,7 @@ def add_broadcast_recipient(
     conn.close()
 
 
-def get_broadcast_for_reply(employee_chat_id, replied_message_id):
+def get_broadcast_for_reply(employee_chat_id: int, replied_message_id: int):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
@@ -242,10 +250,10 @@ def get_broadcast_for_reply(employee_chat_id, replied_message_id):
 
 
 def save_broadcast_response(
-    broadcast_id,
-    employee_chat_id,
-    employee_name,
-    response_text,
+    broadcast_id: int,
+    employee_chat_id: int,
+    employee_name: str,
+    response_text: str,
 ):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
@@ -267,7 +275,7 @@ def save_broadcast_response(
     return response_id
 
 
-def get_undelivered_responses_for_admin(admin_chat_id):
+def get_undelivered_responses_for_admin(admin_chat_id: int):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute(
@@ -302,7 +310,7 @@ def get_undelivered_responses_for_admin(admin_chat_id):
     ]
 
 
-def mark_responses_delivered(response_ids):
+def mark_responses_delivered(response_ids: list[int]):
     if not response_ids:
         return
 
