@@ -14,7 +14,7 @@ import db
 from handlers.user_handlers import reg, send_user, send_month, list_employees, unreg
 from handlers.admin_handlers import start, set_caption, broadcast_start, update_cities, send_pending_responses
 from handlers.button_handlers import button_handler
-from handlers.reply_handlers import reply_button_handler
+from handlers.reply_handlers import reply_button_handler, cancel_action
 from handlers.birthday_notification import send_today_birthdays, send_tomorrow_birthdays
 
 
@@ -28,7 +28,7 @@ async def start_scheduler(app):
     )
     scheduler.add_job(
         send_tomorrow_birthdays,
-        trigger=CronTrigger(hour=22, minute=0),  
+        trigger=CronTrigger(hour=23, minute=24),  
         args=[app],
         id='tomorrow_birthdays'
     )
@@ -52,6 +52,7 @@ def main():
     app.add_handler(CommandHandler("broadcast", broadcast_start))
     app.add_handler(CommandHandler("update_cities", update_cities))
     app.add_handler(CommandHandler("answers", send_pending_responses))
+    app.add_handler(CommandHandler("cancel", cancel_action))
 
 
 

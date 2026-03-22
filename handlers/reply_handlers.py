@@ -25,6 +25,31 @@ def _clear_broadcast_context(context: ContextTypes.DEFAULT_TYPE):
         context.user_data.pop(key, None)
 
 
+async def cancel_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keys_to_check = (
+        "moscow_recipients",
+        "awaiting_moscow_text",
+        "broadcast_employees",
+        "selected_employees",
+        "awaiting_broadcast_text",
+        "current_page",
+        "selected_month",
+        "awaiting_custom_text",
+    )
+
+    has_active_flow = any(context.user_data.get(key) for key in keys_to_check)
+
+    if not has_active_flow:
+        await update.message.reply_text("Сейчас нечего отменять.")
+        return
+
+    _clear_broadcast_context(context)
+    context.user_data.pop("selected_month", None)
+    context.user_data.pop("awaiting_custom_text", None)
+
+    await update.message.reply_text("❌ Действие отменено.")
+
+
 async def _send_collectible_broadcast(
     context: ContextTypes.DEFAULT_TYPE,
     admin_chat_id: int,

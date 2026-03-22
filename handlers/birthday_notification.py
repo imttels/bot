@@ -14,7 +14,7 @@ async def send_today_birthdays(app: Application):
         return
     message = "🎉 **Сегодня день рождения у:**\n\n"
     for b in birthdays:
-        message += f"• {b['name']} (@{b['telegram_nick']}, тел: {b['phone']})\n"
+        message += f"• {b['name']} ({b['telegram_nick']}, тел: {b['phone']})\n"
     for admin_id in ADMIN_CHAT_IDS:
         try:
             await app.bot.send_message(chat_id=admin_id, text=message, parse_mode='Markdown')
@@ -28,7 +28,7 @@ async def send_tomorrow_birthdays(app: Application):
         return
     message = "⏰ **Завтра день рождения у:**\n\n"
     for b in birthdays:
-        message += f"• {b['name']} (@{b['telegram_nick']}, тел: {b['phone']})\n"
+        message += f"• {b['name']} ({b['telegram_nick']}, тел: {b['phone']})\n"
     for admin_id in ADMIN_CHAT_IDS:
         try:
             await app.bot.send_message(chat_id=admin_id, text=message, parse_mode='Markdown')

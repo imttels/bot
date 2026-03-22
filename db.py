@@ -323,3 +323,162 @@ def mark_responses_delivered(response_ids: list[int]):
     )
     conn.commit()
     conn.close()
+
+
+def get_broadcasts_for_admin(admin_chat_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        SELECT
+            b.id,
+            b.message_text,
+            b.created_at,
+            COUNT(DISTINCT br.id) AS recipients_count,
+            COUNT(DISTINCT r.id) AS total_responses,
+            COUNT(DISTINCT CASE WHEN r.delivered_to_admin = 0 THEN r.id END) AS new_responses
+        FROM broadcasts b
+        LEFT JOIN broadcast_recipients br ON br.broadcast_id = b.id
+        LEFT JOIN broadcast_responses r ON r.broadcast_id = b.id
+        WHERE b.admin_chat_id = ?
+        GROUP BY b.id, b.message_text, b.created_at
+        ORDER BY b.created_at DESC, b.id DESC
+        """,
+        (admin_chat_id,),
+    )
+
+    rows = c.fetchall()
+    conn.close()
+
+    return [
+        {
+            "broadcast_id": row[0],
+            "message_text": row[1],
+            "created_at": row[2],
+            "recipients_count": row[3] or 0,
+            "total_responses": row[4] or 0,
+            "new_responses": row[5] or 0,
+        }
+        for row in rows
+    ]
+
+
+def get_broadcast_details_for_admin(admin_chat_id: int, broadcast_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        SELECT
+            b.id,
+            b.message_text,
+            b.created_at,
+            COUNT(DISTINCT br.id) AS recipients_count,
+            COUNT(DISTINCT r.id) AS total_responses,
+            COUNT(DISTINCT CASE WHEN r.delivered_to_admin = 0 THEN r.id END) AS new_responses
+        FROM broadcasts b
+        LEFT JOIN broadcast_recipients br ON br.broadcast_id = b.id
+        LEFT JOIN broadcast_responses r ON r.broadcast_id = b.id
+        WHERE b.admin_chat_id = ? AND b.id = ?
+        GROUP BY b.id, b.message_text, b.created_at
+        """,
+        (admin_chat_id, broadcast_id),
+    )
+
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "broadcast_id": row[0],
+        "message_text": row[1],
+        "created_at": row[2],
+        "recipients_count": row[3] or 0,
+        "total_responses": row[4] or 0,
+        "new_responses": row[5] or 0,
+    }
+
+
+def get_broadcast_responses_for_admin(admin_chat_id: int, broadcast_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        SELECT
+            r.id,
+            r.employee_name,
+            r.response_text,
+            r.created_at,
+            r.delivered_to_admin
+        FROM broadcast_responses r
+        JOIN broadcasts b ON b.id = r.broadcast_id
+        WHERE b.admin_chat_id = ? AND r.broadcast_id = ?
+        ORDER BY r.created_at DESC, r.id DESC
+        """,
+        (admin_chat_id, broadcast_id),
+    )
+
+    rows = c.fetchall()
+    conn.close()
+
+    return [
+        {
+            "response_id": row[0],
+            "employee_name": row[1],
+            "response_text": row[2],
+            "created_at": row[3],
+            "delivered_to_admin": row[4],
+        }
+        for row in rows
+    ]
+
+
+def mark_broadcast_responses_delivered(admin_chat_id: int, broadcast_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute(
+        """
+        UPDATE broadcast_responses
+        SET delivered_to_admin = 1
+        WHERE broadcast_id = ?
+          AND delivered_to_admin = 0
+          AND broadcast_id IN (
+              SELECT id FROM broadcasts WHERE id = ? AND admin_chat_id = ?
+          )
+        """,
+        (broadcast_id, broadcast_id, admin_chat_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def delete_broadcast_for_admin(admin_chat_id: int, broadcast_id: int) -> bool:
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute(
+        "SELECT id FROM broadcasts WHERE id = ? AND admin_chat_id = ?",
+        (broadcast_id, admin_chat_id),
+    )
+    row = c.fetchone()
+
+    if not row:
+        conn.close()
+        return False
+
+    c.execute("DELETE FROM broadcast_responses WHERE broadcast_id = ?", (broadcast_id,))
+    c.execute("DELETE FROM broadcast_recipients WHERE broadcast_id = ?", (broadcast_id,))
+    c.execute(
+        "DELETE FROM broadcasts WHERE id = ? AND admin_chat_id = ?",
+        (broadcast_id, admin_chat_id),
+    )
+
+    conn.commit()
+    conn.close()
+    return True

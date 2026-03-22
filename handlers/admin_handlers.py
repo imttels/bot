@@ -1,10 +1,11 @@
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from config import ADMIN_CHAT_IDS, SPREADSHEET_ID
 import db
-from handlers.button_handlers import show_employees_page
+from handlers.button_handlers import show_employees_page, show_broadcasts_page
 from services.sheets_client import read_curators
 import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,12 @@ def get_admin_keyboard():
         ["❓ Помощь"]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+def _truncate_text(text: str, limit: int = 45) -> str:
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    return text[:limit - 1] + "…"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -109,7 +116,7 @@ def _truncate_text(text, limit: int = 140):
     return text[: limit - 1].rstrip() + "…"
 
 
-def _split_message(text, limit: int = 3500) :
+def _split_message(text: str, limit: int = 3500) :
     if len(text) <= limit:
         return [text]
 
@@ -135,37 +142,18 @@ def _split_message(text, limit: int = 3500) :
 
 async def send_pending_responses(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_chat_id = update.effective_chat.id
+
     if admin_chat_id not in ADMIN_CHAT_IDS:
         await update.message.reply_text("Доступ запрещён.")
         return
 
-    responses = db.get_undelivered_responses_for_admin(admin_chat_id)
-    if not responses:
-        await update.message.reply_text("Новых ответов пока нет.")
+    broadcasts = db.get_broadcasts_for_admin(admin_chat_id)
+
+    if not broadcasts:
+        await update.message.reply_text("У вас пока нет рассылок.")
         return
 
-    grouped: dict[tuple[int, str], list[dict]] = {}
-    for item in responses:
-        key = (item["broadcast_id"], item["message_text"])
-        grouped.setdefault(key, []).append(item)
+    context.user_data["answers_broadcasts"] = broadcasts
+    context.user_data["answers_page"] = 0
 
-    sent_ids = []
-    for (broadcast_id, message_text), items in grouped.items():
-        header = (
-            f"📨 Ответы по рассылке #{broadcast_id}\n"
-            f"Текст рассылки: {_truncate_text(message_text)}"
-        )
-
-        body_parts = []
-        for index, item in enumerate(items, start=1):
-            body_parts.append(
-                f"{index}. {item['employee_name']} — {item['created_at']}\n"
-                f"{item['response_text']}"
-            )
-            sent_ids.append(item["response_id"])
-
-        full_text = header + "\n\n" + "\n\n".join(body_parts)
-        for chunk in _split_message(full_text):
-            await update.message.reply_text(chunk)
-
-    db.mark_responses_delivered(sent_ids)
+    await show_broadcasts_page(update, context, page=0)
