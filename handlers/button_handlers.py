@@ -87,13 +87,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
     if data.startswith("toggle_"):
-        name = data[7:]  # убираем "toggle_"
+        name = data[7:]  
         selected = context.user_data['selected_employees']
         if name in selected:
             selected.remove(name)
         else:
             selected.add(name)
-        # Обновляем текущую страницу (извлекаем номер страницы из состояния)
         page = context.user_data.get('current_page', 0)
         await show_employees_page(update, context, page)
 
@@ -117,6 +116,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "broadcast_cancel":
         await query.edit_message_text("❌ Рассылка отменена.")
         context.user_data.clear()
+
+   
 
 
 def build_employees_keyboard(employees_dict, selected_set, page=0, items_per_page=5):

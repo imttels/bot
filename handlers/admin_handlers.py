@@ -16,6 +16,7 @@ def get_admin_keyboard():
         ["📋 Список сотрудников"],
         ["📨 Отправить сообщение выбранным"], 
         ["📍 Отправить сообщение Москва"],
+        ["📥 Получить ответы"],
         ["❓ Помощь"]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -98,3 +99,73 @@ async def update_cities(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(not_found) > 10:
             report += f" и ещё {len(not_found)-10}"
     await update.message.reply_text(report)
+
+
+
+def _truncate_text(text, limit: int = 140):
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "…"
+
+
+def _split_message(text, limit: int = 3500) :
+    if len(text) <= limit:
+        return [text]
+
+    parts = []
+    current = []
+    current_len = 0
+
+    for block in text.split("\n\n"):
+        block_len = len(block) + 2
+        if current and current_len + block_len > limit:
+            parts.append("\n\n".join(current))
+            current = [block]
+            current_len = len(block)
+        else:
+            current.append(block)
+            current_len += block_len
+
+    if current:
+        parts.append("\n\n".join(current))
+
+    return parts
+
+
+async def send_pending_responses(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    admin_chat_id = update.effective_chat.id
+    if admin_chat_id not in ADMIN_CHAT_IDS:
+        await update.message.reply_text("Доступ запрещён.")
+        return
+
+    responses = db.get_undelivered_responses_for_admin(admin_chat_id)
+    if not responses:
+        await update.message.reply_text("Новых ответов пока нет.")
+        return
+
+    grouped: dict[tuple[int, str], list[dict]] = {}
+    for item in responses:
+        key = (item["broadcast_id"], item["message_text"])
+        grouped.setdefault(key, []).append(item)
+
+    sent_ids = []
+    for (broadcast_id, message_text), items in grouped.items():
+        header = (
+            f"📨 Ответы по рассылке #{broadcast_id}\n"
+            f"Текст рассылки: {_truncate_text(message_text)}"
+        )
+
+        body_parts = []
+        for index, item in enumerate(items, start=1):
+            body_parts.append(
+                f"{index}. {item['employee_name']} — {item['created_at']}\n"
+                f"{item['response_text']}"
+            )
+            sent_ids.append(item["response_id"])
+
+        full_text = header + "\n\n" + "\n\n".join(body_parts)
+        for chunk in _split_message(full_text):
+            await update.message.reply_text(chunk)
+
+    db.mark_responses_delivered(sent_ids)

@@ -3,21 +3,19 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
-    filters
+    filters,
 )
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import logging
+
 from config import TOKEN
 import db
 from handlers.user_handlers import reg, send_user, send_month, list_employees, unreg
-from handlers.admin_handlers import start
+from handlers.admin_handlers import start, set_caption, broadcast_start, update_cities, send_pending_responses
 from handlers.button_handlers import button_handler
 from handlers.reply_handlers import reply_button_handler
 from handlers.birthday_notification import send_today_birthdays, send_tomorrow_birthdays
-from handlers.admin_handlers import set_caption
-from handlers.admin_handlers import broadcast_start
-from handlers.admin_handlers import update_cities
 
 
 async def start_scheduler(app):
@@ -53,6 +51,8 @@ def main():
     app.add_handler(CommandHandler("set_caption", set_caption))
     app.add_handler(CommandHandler("broadcast", broadcast_start))
     app.add_handler(CommandHandler("update_cities", update_cities))
+    app.add_handler(CommandHandler("answers", send_pending_responses))
+
 
 
 

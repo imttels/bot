@@ -16,6 +16,46 @@ def init_db():
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)''')
 
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS broadcasts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_chat_id INTEGER NOT NULL,
+            message_text TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS broadcast_recipients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            broadcast_id INTEGER NOT NULL,
+            employee_chat_id INTEGER NOT NULL,
+            employee_name TEXT NOT NULL,
+            sent_message_id INTEGER NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (broadcast_id) REFERENCES broadcasts(id)
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS broadcast_responses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            broadcast_id INTEGER NOT NULL,
+            employee_chat_id INTEGER NOT NULL,
+            employee_name TEXT NOT NULL,
+            response_text TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            delivered_to_admin INTEGER DEFAULT 0,
+            FOREIGN KEY (broadcast_id) REFERENCES broadcasts(id)
+        )
+        """
+    )
+
     conn.commit()
     conn.close()
 
@@ -138,3 +178,140 @@ def get_all_employees_with_city():
     rows = c.fetchall()
     conn.close()
     return rows  
+
+
+
+
+def create_broadcast(admin_chat_id, message_text):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO broadcasts (admin_chat_id, message_text) VALUES (?, ?)",
+        (admin_chat_id, message_text),
+    )
+    broadcast_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return broadcast_id
+
+
+def add_broadcast_recipient(
+    broadcast_id,
+    employee_chat_id,
+    employee_name,
+    sent_message_id,
+):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        """
+        INSERT INTO broadcast_recipients (
+            broadcast_id,
+            employee_chat_id,
+            employee_name,
+            sent_message_id
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (broadcast_id, employee_chat_id, employee_name, sent_message_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_broadcast_for_reply(employee_chat_id, replied_message_id):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT broadcast_id, employee_name
+        FROM broadcast_recipients
+        WHERE employee_chat_id = ? AND sent_message_id = ?
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (employee_chat_id, replied_message_id),
+    )
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {"broadcast_id": row[0], "employee_name": row[1]}
+
+
+def save_broadcast_response(
+    broadcast_id,
+    employee_chat_id,
+    employee_name,
+    response_text,
+):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        """
+        INSERT INTO broadcast_responses (
+            broadcast_id,
+            employee_chat_id,
+            employee_name,
+            response_text
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (broadcast_id, employee_chat_id, employee_name, response_text),
+    )
+    response_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return response_id
+
+
+def get_undelivered_responses_for_admin(admin_chat_id):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT
+            r.id,
+            r.broadcast_id,
+            b.message_text,
+            r.employee_name,
+            r.response_text,
+            r.created_at
+        FROM broadcast_responses r
+        JOIN broadcasts b ON b.id = r.broadcast_id
+        WHERE b.admin_chat_id = ? AND r.delivered_to_admin = 0
+        ORDER BY r.broadcast_id ASC, r.created_at ASC, r.id ASC
+        """,
+        (admin_chat_id,),
+    )
+    rows = c.fetchall()
+    conn.close()
+
+    return [
+        {
+            "response_id": row[0],
+            "broadcast_id": row[1],
+            "message_text": row[2],
+            "employee_name": row[3],
+            "response_text": row[4],
+            "created_at": row[5],
+        }
+        for row in rows
+    ]
+
+
+def mark_responses_delivered(response_ids):
+    if not response_ids:
+        return
+
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    placeholders = ",".join("?" for _ in response_ids)
+    c.execute(
+        f"UPDATE broadcast_responses SET delivered_to_admin = 1 WHERE id IN ({placeholders})",
+        response_ids,
+    )
+    conn.commit()
+    conn.close()
