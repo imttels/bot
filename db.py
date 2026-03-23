@@ -538,3 +538,26 @@ def get_active_employees_by_city(city):
     rows = c.fetchall()
     conn.close()
     return rows
+
+def remove_inactive_employees():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT name
+        FROM employees
+        WHERE lower(trim(COALESCE(status, 'работает'))) != 'работает'
+    """)
+    rows = c.fetchall()
+    names = [row[0] for row in rows]
+
+    c.execute("""
+        DELETE FROM employees
+        WHERE lower(trim(COALESCE(status, 'работает'))) != 'работает'
+    """)
+
+    deleted_count = c.rowcount
+    conn.commit()
+    conn.close()
+
+    return deleted_count, names

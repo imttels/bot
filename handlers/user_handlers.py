@@ -240,3 +240,25 @@ async def unreg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"Нельзя удалить '{name}' — это администратор.")
         else:
             await update.message.reply_text(f"Сотрудник '{name}' не найден или уже удалён.")
+
+async def remove_inactive_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    sender_id = update.effective_chat.id
+    if sender_id not in ADMIN_CHAT_IDS:
+        await update.message.reply_text("Доступ запрещён. Только администратор.")
+        return
+
+    deleted_count, deleted_names = db.remove_inactive_employees()
+
+    if deleted_count == 0:
+        await update.message.reply_text("Неработающих сотрудников в базе нет.")
+        return
+
+    report_lines = [
+        f"Удалено неработающих сотрудников: {deleted_count}"
+    ]
+
+    if deleted_names:
+        report_lines.append("")
+        report_lines.append(", ".join(sorted(deleted_names)))
+
+    await update.message.reply_text("\n".join(report_lines))

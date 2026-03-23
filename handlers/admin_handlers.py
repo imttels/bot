@@ -107,7 +107,7 @@ async def update_cities(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Доступ запрещён.")
         return
 
-    await update.message.reply_text("Синхронизация городов начата...")
+    await update.message.reply_text("Синхронизация начата...")
     curators = read_curators(SPREADSHEET_ID)  
     if not curators:
         await update.message.reply_text("Не удалось получить данные из таблицы.")

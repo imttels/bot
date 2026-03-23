@@ -16,6 +16,7 @@ from handlers.admin_handlers import start, set_caption, broadcast_start, update_
 from handlers.button_handlers import button_handler
 from handlers.reply_handlers import reply_button_handler, cancel_action
 from handlers.birthday_notification import send_today_birthdays, send_tomorrow_birthdays
+from handlers.user_handlers import remove_inactive_command
 
 
 async def start_scheduler(app):
@@ -53,6 +54,7 @@ def main():
     app.add_handler(CommandHandler("update_cities", update_cities))
     app.add_handler(CommandHandler("answers", send_pending_responses))
     app.add_handler(CommandHandler("cancel", cancel_action))
+    app.add_handler(CommandHandler("remove_inactive", remove_inactive_command))
 
 
 

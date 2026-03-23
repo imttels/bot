@@ -211,7 +211,9 @@ async def reply_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             "/unreg Имя Фамилия — удалить сотрудника\n"
             "/reg — регистрация для обычного пользователя\n"
             "/set_caption — установка сообщения по умолчанию\n"
-            "/answers — получить новые ответы на рассылки"
+            "/answers — получить новые ответы на рассылки\n"
+            "/update_cities - обновить таблицу\n"
+            "/remove_inactive — удалить всех сотрудников со статусом 'не работает'"
         )
         await update.message.reply_text(help_text)
 
