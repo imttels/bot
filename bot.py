@@ -39,7 +39,7 @@ async def start_scheduler(app):
 
     scheduler.add_job(
         notify_about_new_answers,
-        trigger=CronTrigger(minute=0),  # каждый час в 00 минут
+        trigger=CronTrigger(minute=00),  
         args=[app],
         id='broadcast_answers_notifications'
     )

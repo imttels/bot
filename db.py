@@ -78,21 +78,15 @@ def add_notification_sent_column_if_needed():
 def get_admins_with_unnotified_responses():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-
     c.execute("""
-        SELECT
-            b.admin_chat_id,
-            COUNT(r.id) AS new_count
+        SELECT b.admin_chat_id, COUNT(r.id) AS unread_count
         FROM broadcast_responses r
         JOIN broadcasts b ON b.id = r.broadcast_id
         WHERE r.delivered_to_admin = 0
-          AND COALESCE(r.notification_sent, 0) = 0
         GROUP BY b.admin_chat_id
     """)
-
     rows = c.fetchall()
     conn.close()
-
     return [
         {
             "admin_chat_id": row[0],
@@ -100,6 +94,8 @@ def get_admins_with_unnotified_responses():
         }
         for row in rows
     ]
+
+
 
 
 def mark_notifications_sent_for_admin(admin_chat_id: int):
