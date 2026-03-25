@@ -2,44 +2,35 @@ import sqlite3
 
 DB_NAME = "employees.db"
 
-
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS employees (
             chat_id INTEGER PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
-            city TEXT,
-            status TEXT DEFAULT 'работает'
+            city TEXT
         )
-        """
-    )
+    """)
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT
         )
-        """
-    )
+    """)
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS broadcasts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             admin_chat_id INTEGER NOT NULL,
             message_text TEXT NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
-        """
-    )
+    """)
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS broadcast_recipients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             broadcast_id INTEGER NOT NULL,
@@ -49,11 +40,9 @@ def init_db():
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (broadcast_id) REFERENCES broadcasts(id)
         )
-        """
-    )
+    """)
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS broadcast_responses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             broadcast_id INTEGER NOT NULL,
@@ -62,10 +51,70 @@ def init_db():
             response_text TEXT NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             delivered_to_admin INTEGER DEFAULT 0,
+            notification_sent INTEGER DEFAULT 0,
             FOREIGN KEY (broadcast_id) REFERENCES broadcasts(id)
         )
-        """
-    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+    add_status_column_if_needed()
+    add_notification_sent_column_if_needed()
+
+
+def add_notification_sent_column_if_needed():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    try:
+        c.execute("ALTER TABLE broadcast_responses ADD COLUMN notification_sent INTEGER DEFAULT 0")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+    finally:
+        conn.close()
+
+
+def get_admins_with_unnotified_responses():
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute("""
+        SELECT
+            b.admin_chat_id,
+            COUNT(r.id) AS new_count
+        FROM broadcast_responses r
+        JOIN broadcasts b ON b.id = r.broadcast_id
+        WHERE r.delivered_to_admin = 0
+          AND COALESCE(r.notification_sent, 0) = 0
+        GROUP BY b.admin_chat_id
+    """)
+
+    rows = c.fetchall()
+    conn.close()
+
+    return [
+        {
+            "admin_chat_id": row[0],
+            "new_count": row[1],
+        }
+        for row in rows
+    ]
+
+
+def mark_notifications_sent_for_admin(admin_chat_id: int):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+
+    c.execute("""
+        UPDATE broadcast_responses
+        SET notification_sent = 1
+        WHERE delivered_to_admin = 0
+          AND COALESCE(notification_sent, 0) = 0
+          AND broadcast_id IN (
+              SELECT id FROM broadcasts WHERE admin_chat_id = ?
+          )
+    """, (admin_chat_id,))
 
     conn.commit()
     conn.close()
