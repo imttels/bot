@@ -18,7 +18,7 @@ def get_sheets_service():
     creds = None
     if os.path.exists('token_sheets.pickle'):
         with open('token_sheets.pickle', 'rb') as token:
-            creds = pickle.load(token)
+            creds = pickle.load(token) 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())

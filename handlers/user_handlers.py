@@ -66,13 +66,28 @@ async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE
                     executor, download_file, service, file["id"], original_filename
                 )
 
+            if "broadcast_id" not in context.user_data:
+                broadcast_id = db.create_broadcast(sender_id, caption_text)
+                context.user_data["broadcast_id"] = broadcast_id
+            else:
+                broadcast_id = context.user_data["broadcast_id"]
+
+            message_text = caption_text + "\n\nОтветьте на это сообщение, если есть ошибка."
+
             with open(original_filename, "rb") as f:
-                await context.bot.send_document(
+                sent_message = await context.bot.send_document(
                     chat_id=chat_id,
                     document=f,
                     filename=original_filename,
-                    caption=caption_text
+                    caption=message_text
                 )
+
+            db.add_broadcast_recipient(
+                broadcast_id,
+                chat_id,
+                name,
+                sent_message.message_id
+            )
 
             success.append(name)
             logger.info(f"Отправлено: {name} за {month}")
@@ -138,6 +153,7 @@ async def send_month_for_date(update: Update, context: ContextTypes.DEFAULT_TYPE
         report_lines.append("Ничего не обработано (папка пуста или ошибка доступа)")
 
     report = "\n".join(report_lines)
+    context.user_data.pop("broadcast_id", None)
     await target_message.reply_text(report)
 
 
@@ -184,13 +200,32 @@ async def send_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         with ThreadPoolExecutor() as executor:
             await asyncio.get_event_loop().run_in_executor(executor, download_file, service, file["id"], original_filename)
+        
+        default_caption = db.get_setting("default_caption", "Расчётка за {month}")
+        caption_text = default_caption.replace("{month}", month)
+
+        message_text = caption_text + "\n\nОтветьте на это сообщение, если есть ошибка."
+
+        broadcast_id = db.create_broadcast(sender_id, name+" "+caption_text)
+
         with open(original_filename, "rb") as f:
-            await context.bot.send_document(
+            doc_msg = await context.bot.send_document(
                 chat_id=target_chat_id,
                 document=f,
                 filename=original_filename,
-                caption=f"Расчётка за {month}"
+                caption=message_text
             )
+
+    
+
+        db.add_broadcast_recipient(
+            broadcast_id,
+            target_chat_id,
+            name,
+            doc_msg.message_id
+        )
+
+      
         logger.info(f"Отправлено: {name} за {month} админом {sender_id}")
         await update.message.reply_text("Отправлено.")
     except Exception as e:

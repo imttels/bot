@@ -7,9 +7,15 @@ import logging
 from handlers.user_handlers import send_month_for_date
 import math
 from telegram.error import BadRequest
+from datetime import datetime, timedelta
 
 
 logger = logging.getLogger(__name__)
+
+def to_moscow_time(dt_str):
+    dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+    dt_msk = dt + timedelta(hours=3)
+    return dt_msk.strftime("%d.%m.%Y %H:%M")
 
 def get_months(service, parent_folder_id, year):
     query = f"'{parent_folder_id}' in parents and mimeType='application/vnd.google-apps.folder'"
@@ -137,7 +143,7 @@ async def show_broadcast_details(update: Update, context: ContextTypes.DEFAULT_T
 
     lines = [
         f"📨 Рассылка #{details['broadcast_id']}",
-        f"🕒 Создана: {details['created_at']}",
+        f"🕒 Создана: { to_moscow_time(details['created_at'])}",
         f"👥 Получателей: {details['recipients_count']}",
         f"💬 Ответов всего: {details['total_responses']}",
         f"🆕 Новых ответов: {details['new_responses']}",
@@ -154,7 +160,7 @@ async def show_broadcast_details(update: Update, context: ContextTypes.DEFAULT_T
         for i, item in enumerate(responses, start=1):
             new_mark = " 🆕" if item["delivered_to_admin"] == 0 else ""
             lines.append(
-                f"{i}. {item['employee_name']} — {item['created_at']}{new_mark}\n"
+                f"{i}. {item['employee_name']}{new_mark}\n"
                 f"{item['response_text']}"
             )
             lines.append("")

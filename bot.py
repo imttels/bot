@@ -25,7 +25,7 @@ async def start_scheduler(app):
 
     scheduler.add_job(
         send_today_birthdays,
-        trigger=CronTrigger(hour=7, minute=0),
+        trigger=CronTrigger(hour=16, minute=50),
         args=[app],
         id='today_birthdays'
     )
