@@ -38,7 +38,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['keyboard_sent'] = True
     else:
         await update.message.reply_text(
-            "Вы не являетесь администратором. Для регистрации используйте /reg Имя Фамилия.",
+            "Для регистрации используйте /reg Имя Фамилия.",
             reply_markup=ReplyKeyboardRemove()
         )
 
